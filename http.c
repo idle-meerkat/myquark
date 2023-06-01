@@ -765,8 +765,8 @@ http_prepare_response(const struct request *req, struct response *res,
 	}
 
 	/* reject all non-well-known hidden targets (see RFC 8615) */
-	if (strstr(res->path, "/.") && strncmp(res->path, "/.well-known/",
-	                                  sizeof("/.well-known/") - 1)) {
+	if (!srv->allow_hidden && strstr(res->path, "/.") &&
+	    strncmp(res->path, "/.well-known/", sizeof("/.well-known/") - 1)) {
 		s = S_FORBIDDEN;
 		goto err;
 	}
@@ -896,7 +896,11 @@ http_prepare_response(const struct request *req, struct response *res,
 				} else {
 					res->status = S_OK;
 				}
-				res->type = RESTYPE_DIRLISTING;
+
+				if (srv->allow_hidden)
+					res->type = RESTYPE_DIRLISTING_HIDDEN;
+				else
+					res->type = RESTYPE_DIRLISTING;
 
 				if (esnprintf(res->field[RES_CONTENT_TYPE],
 				              sizeof(res->field[RES_CONTENT_TYPE]),

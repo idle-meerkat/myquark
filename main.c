@@ -102,6 +102,9 @@ main(int argc, char *argv[])
 	case 'l':
 		srv.listdirs = 1;
 		break;
+	case 'H':
+		srv.allow_hidden = 1;
+		break;
 	case 'm':
 		if (spacetok(EARGF(usage()), tok, 3) || !tok[0] || !tok[1]) {
 			usage();

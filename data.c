@@ -11,11 +11,12 @@
 #include "http.h"
 #include "util.h"
 
-enum status (* const data_fct[])(const struct response *,
-                                 struct buffer *, size_t *) = {
+enum status (*const data_fct[])(const struct response *, struct buffer *,
+				size_t *) = {
 	[RESTYPE_DIRLISTING] = data_prepare_dirlisting_buf,
-	[RESTYPE_ERROR]      = data_prepare_error_buf,
-	[RESTYPE_FILE]       = data_prepare_file_buf,
+	[RESTYPE_DIRLISTING_HIDDEN] = data_prepare_dirlisting_buf,
+	[RESTYPE_ERROR] = data_prepare_error_buf,
+	[RESTYPE_FILE] = data_prepare_file_buf,
 };
 
 static int
@@ -124,7 +125,9 @@ data_prepare_dirlisting_buf(const struct response *res,
 	/* listing entries */
 	for (i = *progress; i < (size_t)dirlen; i++) {
 		/* skip hidden files, "." and ".." */
-		if (e[i]->d_name[0] == '.') {
+		if (e[i]->d_name[0] == '.' &&
+		    (e[i]->d_name[1] == '.' ||
+		     res->type != RESTYPE_DIRLISTING_HIDDEN)) {
 			continue;
 		}
 

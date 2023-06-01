@@ -28,6 +28,7 @@ struct server {
 	size_t vhost_len;
 	struct map *map;
 	size_t map_len;
+	int allow_hidden;
 };
 
 void server_init_thread_pool(int, size_t, size_t, const struct server *);
