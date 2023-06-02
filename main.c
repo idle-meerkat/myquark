@@ -75,13 +75,13 @@ main(int argc, char *argv[])
 	int insock, status = 0;
 	const char *err;
 	char *tok[4];
-
 	/* defaults */
 	size_t nthreads = 4;
 	size_t nslots = 64;
 	char *servedir = ".";
 	char *user = "nobody";
 	char *group = "nogroup";
+	const char *creds_file = 0;
 
 	ARGBEGIN {
 	case 'd':
@@ -131,6 +131,10 @@ main(int argc, char *argv[])
 			die("strtonum '%s': %s", EARGF(usage()), err);
 		}
 		break;
+	case 'c':
+		creds_file = EARGF(usage());
+		srv.auth_enabled = 1;
+		break;
 	case 'p':
 		srv.port = EARGF(usage());
 		break;
@@ -179,6 +183,10 @@ main(int argc, char *argv[])
 			die("regcomp '%s': invalid regex",
 			    srv.vhost[i].regex);
 		}
+	}
+
+	if (creds_file && server_creds_file_parse(creds_file, &srv.creds)) {
+		die("failed parsing creds file");
 	}
 
 	/* validate user and group */

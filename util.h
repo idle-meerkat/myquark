@@ -39,4 +39,14 @@ long long strtonum(const char *, long long, long long, const char **);
 
 int buffer_appendf(struct buffer *, const char *, ...);
 
+void stok(const unsigned char *s, size_t sz, int dlm, const unsigned char **beg,
+	  const unsigned char **end, size_t *tsz, size_t *left);
+
+#define DIEASSERT(T)                                                 \
+	do {                                                         \
+		if (!(T))                                            \
+			die("%s:%lu DIEASSERT(%s) failed", __func__, \
+			    (unsigned long)__LINE__, #T);            \
+	} while (0)
+
 #endif /* UTIL_H */

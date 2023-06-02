@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 #define BUFFER_SIZE 4096
-#define FIELD_MAX   200
+#define FIELD_MAX 1024
 
 /* mime-types */
 static const struct {

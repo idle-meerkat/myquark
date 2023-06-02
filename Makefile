@@ -3,10 +3,10 @@
 .POSIX:
 
 include config.mk
+CFLAGS = -Wall -Wextra -std=c99 -pedantic
+COMPONENTS = connection data http queue server sock util bcrypt base64 rand auth
 
-COMPONENTS = connection data http queue server sock util
-
-all: quark
+all: quark quark-cred
 
 connection.o: connection.c config.h connection.h data.h http.h server.h sock.h util.h config.mk
 data.o: data.c config.h data.h http.h server.h util.h config.mk
@@ -19,11 +19,14 @@ util.o: util.c config.h util.h config.mk
 quark: config.h $(COMPONENTS:=.o) $(COMPONENTS:=.h) main.o config.mk
 	$(CC) -o $@ $(CPPFLAGS) $(CFLAGS) $(COMPONENTS:=.o) main.o $(LDFLAGS)
 
+quark-cred: bcrypt.o rand.o quark-cred.c
+	$(CC) -o $@ quark-cred.c $(CPPFLAGS) $(CFLAGS) bcrypt.o rand.o
+
 config.h:
 	cp config.def.h $@
 
 clean:
-	rm -f quark main.o $(COMPONENTS:=.o)
+	rm -f quark quark-cred main.o $(COMPONENTS:=.o)
 
 dist:
 	rm -rf "quark-$(VERSION)"
@@ -37,10 +40,12 @@ install: all
 	mkdir -p "$(DESTDIR)$(PREFIX)/bin"
 	cp -f quark "$(DESTDIR)$(PREFIX)/bin"
 	chmod 755 "$(DESTDIR)$(PREFIX)/bin/quark"
+	chmod 755 "$(DESTDIR)$(PREFIX)/bin/quark-cred"
 	mkdir -p "$(DESTDIR)$(MANPREFIX)/man1"
 	cp quark.1 "$(DESTDIR)$(MANPREFIX)/man1/quark.1"
 	chmod 644 "$(DESTDIR)$(MANPREFIX)/man1/quark.1"
 
 uninstall:
 	rm -f "$(DESTDIR)$(PREFIX)/bin/quark"
+	rm -f "$(DESTDIR)$(PREFIX)/bin/quark-cred"
 	rm -f "$(DESTDIR)$(MANPREFIX)/man1/quark.1"

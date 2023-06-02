@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "connection.h"
 #include "queue.h"
@@ -175,3 +176,46 @@ server_init_thread_pool(int insock, size_t nthreads, size_t nslots,
 		}
 	}
 }
+
+int server_creds_file_parse(const char *path, struct auth_creds *creds)
+{
+	FILE *f;
+	char u[512], p[512], rw[3];
+	int n;
+	struct auth_creds c = { 0 };
+	int rc = -1;
+
+	if (!path || !(f = fopen(path, "r"))) {
+		warn("failed to open creds file path: %s",
+		     path ? path : "(NULL)");
+		return -1;
+	}
+
+	while (1) {
+		if (c.count >= USER_MAX_NUM) {
+			warn("number of creds is larger than USER_MAX_NUM");
+			goto out;
+		}
+		n = fscanf(f, "%511s %2s %511s", u, rw, p);
+		if (n == EOF)
+			break;
+		if (n != 3) {
+			warn("invalid creds file %d", n);
+			goto out;
+		}
+
+		strncpy(c.map[c.count].user, u, sizeof c.map[0].user);
+		strncpy(c.map[c.count].pwdhash, p, sizeof c.map[0].pwdhash);
+		c.rw[c.count] |= (unsigned char)!!strchr(rw, 'r');
+		c.rw[c.count] |= (unsigned char)(!!strchr(rw, 'w') << 1);
+
+		++c.count;
+	}
+
+	*creds = c;
+	rc = 0;
+out:
+	fclose(f);
+	return rc;
+}
+

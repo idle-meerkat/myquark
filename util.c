@@ -17,8 +17,7 @@
 
 char *argv0;
 
-static void
-verr(const char *fmt, va_list ap)
+void verr(const char *fmt, va_list ap)
 {
 	if (argv0 && strncmp(fmt, "usage", sizeof("usage") - 1)) {
 		fprintf(stderr, "%s: ", argv0);
@@ -278,4 +277,25 @@ buffer_appendf(struct buffer *buf, const char *suffixfmt, ...)
 	buf->len += ret;
 
 	return 0;
+}
+
+void stok(const unsigned char *s, size_t sz, int dlm, const unsigned char **beg,
+	  const unsigned char **end, size_t *tsz, size_t *left)
+{
+	size_t e, b;
+
+	b = 0;
+	while (s[b] == dlm && b < sz) {
+		++b;
+	}
+
+	e = b;
+	while (s[e] && s[e] != dlm && e < sz) {
+		++e;
+	}
+
+	*beg = &s[b];
+	*end = &s[e];
+	*tsz = e - b;
+	*left = sz - e;
 }

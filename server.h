@@ -5,6 +5,8 @@
 #include <regex.h>
 #include <stddef.h>
 
+#include "auth.h"
+
 struct vhost {
 	char *chost;
 	char *regex;
@@ -28,9 +30,12 @@ struct server {
 	size_t vhost_len;
 	struct map *map;
 	size_t map_len;
+	struct auth_creds creds;
+	int auth_enabled;
 	int allow_hidden;
 };
 
 void server_init_thread_pool(int, size_t, size_t, const struct server *);
+int server_creds_file_parse(const char *, struct auth_creds *);
 
 #endif /* SERVER_H */

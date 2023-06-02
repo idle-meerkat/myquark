@@ -19,11 +19,14 @@
 #include "config.h"
 #include "http.h"
 #include "util.h"
+#include "base64.h"
+#include "auth.h"
 
 const char *req_field_str[] = {
-	[REQ_HOST]              = "Host",
-	[REQ_RANGE]             = "Range",
+	[REQ_HOST] = "Host",
+	[REQ_RANGE] = "Range",
 	[REQ_IF_MODIFIED_SINCE] = "If-Modified-Since",
+	[REQ_AUTHORIZATION] = "Authorization",
 };
 
 const char *req_method_str[] = {
@@ -48,13 +51,14 @@ const char *status_str[] = {
 };
 
 const char *res_field_str[] = {
-	[RES_ACCEPT_RANGES]  = "Accept-Ranges",
-	[RES_ALLOW]          = "Allow",
-	[RES_LOCATION]       = "Location",
-	[RES_LAST_MODIFIED]  = "Last-Modified",
+	[RES_ACCEPT_RANGES] = "Accept-Ranges",
+	[RES_ALLOW] = "Allow",
+	[RES_LOCATION] = "Location",
+	[RES_LAST_MODIFIED] = "Last-Modified",
 	[RES_CONTENT_LENGTH] = "Content-Length",
-	[RES_CONTENT_RANGE]  = "Content-Range",
-	[RES_CONTENT_TYPE]   = "Content-Type",
+	[RES_CONTENT_RANGE] = "Content-Range",
+	[RES_CONTENT_TYPE] = "Content-Type",
+	[RES_AUTHORIZATION] = "Authentication",
 };
 
 enum status
@@ -715,6 +719,48 @@ parse_range(const char *str, size_t size, size_t *lower, size_t *upper)
 	return 0;
 }
 
+static enum status http_auth_parse(const char auth_field[FIELD_MAX],
+				   char user[USER_NAME_LEN], size_t usersz,
+				   char passwd[USER_PWD_LEN], size_t passwdsz)
+{
+	size_t left;
+	const unsigned char *sb = 0, *se = 0, *tb = 0, *te = 0;
+	size_t ssz = 0, tsz = 0; /* schema and token size, begin and end */
+
+	left = FIELD_MAX;
+	stok((unsigned char *)auth_field, left, ' ', &sb, &se, &ssz, &left);
+	stok(se, left, ' ', &tb, &te, &tsz, &left);
+
+	if (!strncmp((char *)sb, "Basic", ssz)) {
+		unsigned char usrpwdstr[2048] = { 0 };
+		const unsigned char *pb = 0, *pe = 0, *ub = 0, *ue = 0;
+		size_t usz = 0, psz = 0;
+
+		if (!tsz || sizeof usrpwdstr <= tsz)
+			return S_FORBIDDEN;
+
+		left = base64_decode((char *)tb, tsz, usrpwdstr);
+		if (!left)
+			return S_FORBIDDEN;
+
+		stok(usrpwdstr, left, ':', &ub, &ue, &usz, &left);
+		stok(ue, left, ':', &pb, &pe, &psz, &left);
+
+		if (!usz || !psz || usersz <= usz || passwdsz <= psz)
+			return S_FORBIDDEN;
+
+		memcpy(user, ub, usz);
+		user[usz] = 0;
+
+		memcpy(passwd, pb, psz);
+		passwd[psz] = 0;
+	} else {
+		return S_BAD_REQUEST;
+	}
+
+	return 0;
+}
+
 void
 http_prepare_response(const struct request *req, struct response *res,
                       const struct server *srv)
@@ -743,6 +789,23 @@ http_prepare_response(const struct request *req, struct response *res,
 		}
 		if (i == srv->vhost_len) {
 			s = S_NOT_FOUND;
+			goto err;
+		}
+	}
+
+	if (srv->auth_enabled) {
+		char user[USER_NAME_LEN + 1] = { 0 },
+					  passwd[USER_PWD_LEN + 1] = { 0 };
+
+		tmps = http_auth_parse(req->field[REQ_AUTHORIZATION], user,
+				       sizeof user, passwd, sizeof passwd);
+		if (tmps) {
+			s = tmps;
+			goto err;
+		}
+
+		if (auth_basic(&srv->creds, user, passwd)) {
+			s = S_FORBIDDEN;
 			goto err;
 		}
 	}
