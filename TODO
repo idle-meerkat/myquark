@@ -1,3 +1,7 @@
 remove bsd things
-think how to support auth
-push support
+think how to support bearer tokens const time (with user quota, ring, etc)
+review basic auth, make search at least O(log2(n))
+think how to reduce getentropy calls wihtout reducing entropy
+
+DONE:
+think how to support basic auth
