@@ -35,19 +35,20 @@ const char *req_method_str[] = {
 };
 
 const char *status_str[] = {
-	[S_OK]                    = "OK",
-	[S_PARTIAL_CONTENT]       = "Partial Content",
-	[S_MOVED_PERMANENTLY]     = "Moved Permanently",
-	[S_NOT_MODIFIED]          = "Not Modified",
-	[S_BAD_REQUEST]           = "Bad Request",
-	[S_FORBIDDEN]             = "Forbidden",
-	[S_NOT_FOUND]             = "Not Found",
-	[S_METHOD_NOT_ALLOWED]    = "Method Not Allowed",
-	[S_REQUEST_TIMEOUT]       = "Request Time-out",
+	[S_OK] = "OK",
+	[S_PARTIAL_CONTENT] = "Partial Content",
+	[S_MOVED_PERMANENTLY] = "Moved Permanently",
+	[S_NOT_MODIFIED] = "Not Modified",
+	[S_BAD_REQUEST] = "Bad Request",
+	[S_FORBIDDEN] = "Forbidden",
+	[S_NOT_FOUND] = "Not Found",
+	[S_METHOD_NOT_ALLOWED] = "Method Not Allowed",
+	[S_REQUEST_TIMEOUT] = "Request Time-out",
 	[S_RANGE_NOT_SATISFIABLE] = "Range Not Satisfiable",
-	[S_REQUEST_TOO_LARGE]     = "Request Header Fields Too Large",
+	[S_REQUEST_TOO_LARGE] = "Request Header Fields Too Large",
 	[S_INTERNAL_SERVER_ERROR] = "Internal Server Error",
 	[S_VERSION_NOT_SUPPORTED] = "HTTP Version not supported",
+	[S_UNAUTHORIZED] = "Unauthorized",
 };
 
 const char *res_field_str[] = {
@@ -59,6 +60,7 @@ const char *res_field_str[] = {
 	[RES_CONTENT_RANGE] = "Content-Range",
 	[RES_CONTENT_TYPE] = "Content-Type",
 	[RES_AUTHORIZATION] = "Authentication",
+	[RES_WWW_AUTHENTICATE] = "WWW-Authenticate",
 };
 
 enum status
@@ -737,17 +739,17 @@ static enum status http_auth_parse(const char auth_field[FIELD_MAX],
 		size_t usz = 0, psz = 0;
 
 		if (!tsz || sizeof usrpwdstr <= tsz)
-			return S_FORBIDDEN;
+			return S_UNAUTHORIZED;
 
 		left = base64_decode((char *)tb, tsz, usrpwdstr);
 		if (!left)
-			return S_FORBIDDEN;
+			return S_UNAUTHORIZED;
 
 		stok(usrpwdstr, left, ':', &ub, &ue, &usz, &left);
 		stok(ue, left, ':', &pb, &pe, &psz, &left);
 
 		if (!usz || !psz || usersz <= usz || passwdsz <= psz)
-			return S_FORBIDDEN;
+			return S_UNAUTHORIZED;
 
 		memcpy(user, ub, usz);
 		user[usz] = 0;
@@ -805,7 +807,7 @@ http_prepare_response(const struct request *req, struct response *res,
 		}
 
 		if (auth_basic(&srv->creds, user, passwd)) {
-			s = S_FORBIDDEN;
+			s = S_UNAUTHORIZED;
 			goto err;
 		}
 	}
@@ -1081,12 +1083,12 @@ http_prepare_response(const struct request *req, struct response *res,
 
 	return;
 err:
-	http_prepare_error_response(req, res, s);
+	http_prepare_error_response(req, res, s, srv);
 }
 
-void
-http_prepare_error_response(const struct request *req,
-                            struct response *res, enum status s)
+void http_prepare_error_response(const struct request *req,
+				 struct response *res, enum status s,
+				 const struct server *srv)
 {
 	/* used later */
 	(void)req;
@@ -1096,6 +1098,14 @@ http_prepare_error_response(const struct request *req,
 
 	res->type = RESTYPE_ERROR;
 	res->status = s;
+
+	if (srv->auth_enabled && s == S_UNAUTHORIZED) {
+		if (esnprintf(res->field[RES_WWW_AUTHENTICATE],
+			      sizeof(res->field[RES_WWW_AUTHENTICATE]),
+			      "Basic")) {
+			res->status = S_INTERNAL_SERVER_ERROR;
+		}
+	}
 
 	if (esnprintf(res->field[RES_CONTENT_TYPE],
 	              sizeof(res->field[RES_CONTENT_TYPE]),

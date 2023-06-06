@@ -36,17 +36,18 @@ struct request {
 };
 
 enum status {
-	S_OK                    = 200,
-	S_PARTIAL_CONTENT       = 206,
-	S_MOVED_PERMANENTLY     = 301,
-	S_NOT_MODIFIED          = 304,
-	S_BAD_REQUEST           = 400,
-	S_FORBIDDEN             = 403,
-	S_NOT_FOUND             = 404,
-	S_METHOD_NOT_ALLOWED    = 405,
-	S_REQUEST_TIMEOUT       = 408,
+	S_OK = 200,
+	S_PARTIAL_CONTENT = 206,
+	S_MOVED_PERMANENTLY = 301,
+	S_NOT_MODIFIED = 304,
+	S_BAD_REQUEST = 400,
+	S_UNAUTHORIZED = 401,
+	S_FORBIDDEN = 403,
+	S_NOT_FOUND = 404,
+	S_METHOD_NOT_ALLOWED = 405,
+	S_REQUEST_TIMEOUT = 408,
 	S_RANGE_NOT_SATISFIABLE = 416,
-	S_REQUEST_TOO_LARGE     = 431,
+	S_REQUEST_TOO_LARGE = 431,
 	S_INTERNAL_SERVER_ERROR = 500,
 	S_VERSION_NOT_SUPPORTED = 505,
 };
@@ -62,6 +63,7 @@ enum res_field {
 	RES_CONTENT_RANGE,
 	RES_CONTENT_TYPE,
 	RES_AUTHORIZATION,
+	RES_WWW_AUTHENTICATE,
 	NUM_RES_FIELDS,
 };
 
@@ -94,7 +96,8 @@ enum status http_recv_header(int, struct buffer *, int *);
 enum status http_parse_header(const char *, struct request *);
 void http_prepare_response(const struct request *, struct response *,
                            const struct server *);
-void http_prepare_error_response(const struct request *,
-                                 struct response *, enum status);
+void http_prepare_error_response(const struct request *req,
+				 struct response *res, enum status s,
+				 const struct server *srv);
 
 #endif /* HTTP_H */

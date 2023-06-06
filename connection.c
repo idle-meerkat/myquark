@@ -85,7 +85,7 @@ connection_serve(struct connection *c, const struct server *srv)
 		/* receive header */
 		done = 0;
 		if ((s = http_recv_header(c->fd, &c->buf, &done))) {
-			http_prepare_error_response(&c->req, &c->res, s);
+			http_prepare_error_response(&c->req, &c->res, s, srv);
 			goto response;
 		}
 		if (!done) {
@@ -95,7 +95,7 @@ connection_serve(struct connection *c, const struct server *srv)
 
 		/* parse header */
 		if ((s = http_parse_header(c->buf.data, &c->req))) {
-			http_prepare_error_response(&c->req, &c->res, s);
+			http_prepare_error_response(&c->req, &c->res, s, srv);
 			goto response;
 		}
 
@@ -104,7 +104,7 @@ connection_serve(struct connection *c, const struct server *srv)
 response:
 		/* generate response header */
 		if ((s = http_prepare_header_buf(&c->res, &c->buf))) {
-			http_prepare_error_response(&c->req, &c->res, s);
+			http_prepare_error_response(&c->req, &c->res, s, srv);
 			if ((s = http_prepare_header_buf(&c->res, &c->buf))) {
 				/* couldn't generate the header, we failed for good */
 				c->res.status = s;
